@@ -1,0 +1,125 @@
+import csv
+from collections import defaultdict
+import matplotlib.pyplot as plt
+import tkinter as tk
+from tkinter import messagebox
+from datetime import datetime, timedelta
+from tkinter import ttk
+
+def add_expense():
+    date = date_entry.get()
+    description = desc_entry.get()
+    amount = float(amount_entry.get())
+    category = category_entry.get()
+
+    with open('expenses.csv', 'a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([date, description, amount, category])
+
+    messagebox.showinfo("Expense Added", "Expense added successfully.")
+    clear_entries()
+
+def generate_report_window():
+    report_window = tk.Toplevel(window)
+    report_window.title("Generate Report")
+
+    def generate_report(report_type):
+        expenses = defaultdict(float)
+        with open('expenses.csv', 'r') as file:
+            reader = csv.reader(file)
+            for row in reader:
+                expense_date, _, amount, category = row
+                if report_type == "daily":
+                    if expense_date == datetime.today().strftime('%Y-%m-%d'):
+                        expenses[category] += float(amount)
+                elif report_type == "weekly":
+                    start_of_week = (datetime.today() - timedelta(days=datetime.today().weekday())).strftime('%Y-%m-%d')
+                    if start_of_week <= expense_date <= datetime.today().strftime('%Y-%m-%d'):
+                        expenses[category] += float(amount)
+                elif report_type == "monthly":
+                    if expense_date.startswith(datetime.today().strftime('%Y-%m')):
+                        expenses[category] += float(amount)
+                elif report_type == "yearly":
+                    if expense_date.startswith(datetime.today().strftime('%Y')):
+                        expenses[category] += float(amount)
+
+        total_expenses = sum(expenses.values())
+
+        report_text = tk.Text(report_window, height=10, width=40)
+        report_text.grid(row=1, column=0, padx=10, pady=5)
+
+        report_text.insert(tk.END, f"{report_type.capitalize()} Expense Report:\n")
+        report_text.insert(tk.END, "--------------\n")
+        for category, amount in expenses.items():
+            percentage = (amount / total_expenses) * 100
+            report_text.insert(tk.END, f"{category}: {amount:.2f} ({percentage:.2f}%)\n")
+        report_text.insert(tk.END, f"Total expenses: {total_expenses:.2f}")
+
+        visualize_spending(expenses)
+
+    report_label = tk.Label(report_window, text="Select report type:")
+    report_label.grid(row=0, column=0, padx=10, pady=5)
+
+    daily_button = ttk.Button(report_window, text="Daily", command=lambda: generate_report("daily"))
+    daily_button.grid(row=0, column=1, padx=10, pady=5)
+    weekly_button = ttk.Button(report_window, text="Weekly", command=lambda: generate_report("weekly"))
+    weekly_button.grid(row=0, column=2, padx=10, pady=5)
+    monthly_button = ttk.Button(report_window, text="Monthly", command=lambda: generate_report("monthly"))
+    monthly_button.grid(row=0, column=3, padx=10, pady=5)
+    yearly_button = ttk.Button(report_window, text="Yearly", command=lambda: generate_report("yearly"))
+    yearly_button.grid(row=0, column=4, padx=10, pady=5)
+
+def visualize_spending(expenses):
+    categories = list(expenses.keys())
+    amounts = list(expenses.values())
+
+    plt.pie(amounts, labels=categories, autopct='%1.1f%%')
+    plt.axis('equal')
+    plt.title('Spending by Category')
+    plt.show()
+
+def clear_entries():
+    date_entry.delete(0, tk.END)
+    desc_entry.delete(0, tk.END)
+    amount_entry.delete(0, tk.END)
+    category_entry.delete(0, tk.END)
+
+# Create main window
+window = tk.Tk()
+window.title("SpendRex - Expense Tracker")
+
+# Create and position labels
+date_label = ttk.Label(window, text="Date (YYYY-MM-DD):")
+date_label.grid(row=0, column=0, padx=10, pady=5, sticky=tk.W)
+desc_label = ttk.Label(window, text="Expense Description:")
+desc_label.grid(row=1, column=0, padx=10, pady=5, sticky=tk.W)
+amount_label = ttk.Label(window, text="Amount:")
+amount_label.grid(row=2, column=0, padx=10, pady=5, sticky=tk.W)
+category_label = ttk.Label(window, text="Category:")
+category_label.grid(row=3, column=0, padx=10, pady=5, sticky=tk.W)
+
+# Create and position entry fields
+date_entry = ttk.Entry(window, width=30)
+date_entry.grid(row=0, column=1, padx=10, pady=5)
+desc_entry = ttk.Entry(window, width=30)
+desc_entry.grid(row=1, column=1, padx=10, pady=5)
+amount_entry = ttk.Entry(window, width=30)
+amount_entry.grid(row=2, column=1, padx=10, pady=5)
+category_entry = ttk.Entry(window, width=30)
+category_entry.grid(row=3, column=1, padx=10, pady=5)
+
+# Create and position buttons
+add_button = ttk.Button(window, text="Add Expense", command=add_expense)
+add_button.grid(row=4, column=0, padx=10, pady=10)
+report_button = ttk.Button(window, text="Generate Report", command=generate_report_window)
+report_button.grid(row=4, column=1, padx=10, pady=10)
+
+# Create and position report text box
+report_text = tk.Text(window, height=10, width=40)
+report_text.grid(row=5, column=0, columnspan=2, padx=10, pady=5)
+
+# Set focus on the date entry field
+date_entry.focus()
+
+# Start the main event loop
+window.mainloop()
